@@ -39,7 +39,7 @@ export class InstructionSet {
 
   private pop(): number {
     const data = this.processor.stack[this.processor.sp];
-    this.processor.sp--;
+    this.processor.sp++;
 
     return data;
   }
