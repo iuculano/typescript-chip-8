@@ -1,0 +1,22 @@
+{
+  "name": "chip8-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+
+  },
+  "devDependencies": {
+    "@types/node": "20.12.8",
+    "tsx": "^4.9.0",
+    "typescript": "^5.4.5",
+    "tsc-alias": "^1.8.8"
+  },
+  "scripts": {
+    "start": "tsx ./src/app.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
