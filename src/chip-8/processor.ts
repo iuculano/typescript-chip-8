@@ -1,4 +1,4 @@
-import { Instruction, InstructionVariables } from './instruction';
+import { Instruction } from './instruction';
 import { InstructionSet } from './instruction-set';
 
 export class Processor {
