@@ -99,41 +99,41 @@ export class Processor {
 
   // The instruction set.
   private operationTable: Operation[] = [
-    this.sys,       // 0
-    this.cls,       // 1
-    this.ret,       // 2
-    this.jp_nnn,    // 3
-    this.call_nnn,  // 4
-    this.se_xkk,    // 5
-    this.sne_xkk,   // 6
-    this.se_xy,     // 7
-    this.ld_xkk,    // 8
-    this.add_xkk,   // 9
-    this.ld_xy,     // 10
-    this.or_xy,     // 11
-    this.and_xy,    // 12
-    this.xor_xy,    // 13
-    this.add_xy,    // 14
-    this.sub_xy,    // 15
-    this.shr_x,     // 16
-    this.subn_xy,   // 17
-    this.shl_x,     // 18
-    this.sne_xy,    // 19
-    this.ld_nnn,    // 20
-    this.jp_v0_nnn, // 21
-    this.rnd_xkk,   // 22
-    this.drw_xyn,   // 23
-    this.skp_x,     // 24
-    this.sknp_x,    // 25
-    this.ld_x_dt,   // 26
-    this.ld_x_k,    // 27
-    this.ld_dt_x,   // 28
-    this.ld_st_x,   // 29
-    this.add_i_x,   // 30
-    this.ld_f_x,    // 31
-    this.ld_b_x,    // 32
-    this.ld_i_x,    // 33
-    this.ld_x_i,    // 34
+    this.sys.bind(this),
+    this.cls.bind(this),
+    this.ret.bind(this),
+    this.jp_nnn.bind(this),
+    this.call_nnn.bind(this),
+    this.se_xkk.bind(this),
+    this.sne_xkk.bind(this),
+    this.se_xy.bind(this),
+    this.ld_xkk.bind(this),
+    this.add_xkk.bind(this),
+    this.ld_xy.bind(this),
+    this.or_xy.bind(this),
+    this.and_xy.bind(this),
+    this.xor_xy.bind(this),
+    this.add_xy.bind(this),
+    this.sub_xy.bind(this),
+    this.shr_x.bind(this),
+    this.subn_xy.bind(this),
+    this.shl_x.bind(this),
+    this.sne_xy.bind(this),
+    this.ld_nnn.bind(this),
+    this.jp_v0_nnn.bind(this),
+    this.rnd_xkk.bind(this),
+    this.drw_xyn.bind(this),
+    this.skp_x.bind(this),
+    this.sknp_x.bind(this),
+    this.ld_x_dt.bind(this),
+    this.ld_x_k.bind(this),
+    this.ld_dt_x.bind(this),
+    this.ld_st_x.bind(this),
+    this.add_i_x.bind(this),
+    this.ld_f_x.bind(this),
+    this.ld_b_x.bind(this),
+    this.ld_i_x.bind(this),
+    this.ld_x_i.bind(this)
   ];
 
   // Couple helpers.
