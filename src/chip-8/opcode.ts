@@ -19,9 +19,9 @@ export class OpcodeDecoder {
     switch(highNibble) {
       case 0x00:
         switch (n) {
-          case 0x00: index = 0; break; // 00E0 - CLS
-          case 0x0E: index = 1; break; // 00EE - RET
-          default: index = 2; break;   // 0nnn - SYS
+          case 0x00: index = 1; break; // 00E0 - CLS
+          case 0x0E: index = 2; break; // 00EE - RET
+          default: index = 0; break;   // 0nnn - SYS
         }
         break;
 

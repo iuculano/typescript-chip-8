@@ -3,9 +3,9 @@ import { Instruction } from './instruction';
 // Lookup table for instruction mnemonics. An instruction, when decoded, will
 // be assigned an index that corresponds to the mnemonic in this table.
 const mnemonicTable = [
+  'SYS nnn',
   'CLS',
   'RET',
-  'SYS nnn',
   'JP nnn',
   'CALL nnn',
   'SE Vx, kk',
