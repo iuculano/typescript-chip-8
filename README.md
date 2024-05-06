@@ -6,4 +6,4 @@ broken.
 Emulates the display, but has no visual output yet and at least can trace
 execution.
 
-![Imgur](https://i.imgur.com/spBXn7T.png)
+![Imgur](https://i.imgur.com/6yhIyoM.png)
