@@ -1,9 +1,9 @@
 # typescript-chip-8
 
 Chip-8 emulator and disassembler with yet another original name. Probably
-broken.
+broken, but at least runs the IBM ROM.
 
-Emulates the display, but has no visual output yet and at least can trace
-execution.
+Currently has no frontend whatsoever.
 
 ![Imgur](https://i.imgur.com/6yhIyoM.png)
+![Imgur](https://i.imgur.com/UvdQbOQ.png)
