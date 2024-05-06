@@ -1,214 +1,368 @@
-import * as fs from 'fs';
+import { Instruction } from './instruction';
+import { OpcodeDecoder } from './opcode';
+import { Rom } from './rom';
+import { Disassembler } from './disassembler';
 
-const mnemonicTable = [
-  'CLS',
-  'RET',
-  'SYS nnn',
-  'JP nnn',
-  'CALL nnn',
-  'SE Vx, kk',
-  'SNE Vx, kk',
-  'SE Vx, Vy',
-  'LD Vx, kk',
-  'ADD Vx, kk',
-  'LD Vx, Vy',
-  'OR Vx, Vy',
-  'AND Vx, Vy',
-  'XOR Vx, Vy',
-  'ADD Vx, Vy',
-  'SUB Vx, Vy',
-  'SHR Vx',
-  'SUBN Vx, Vy',
-  'SHL Vx',
-  'SNE Vx, Vy',
-  'LD I, kk',
-  'JP V0, kk',
-  'RND Vx, kk',
-  'DRW Vx, Vy, n',
-  'SKP Vx',
-  'SKNP Vx',
-  'LD Vx, DT',
-  'LD Vx, K',
-  'LD DT, Vx',
-  'LD ST, Vx',
-  'ADD I, Vx',
-  'LD F, Vx',
-  'LD B, Vx',
-  'LD [I], Vx',
-  'LD Vx, [I]',
-];
+type Operation = (instruction: Instruction) => void;
 
-interface DecodedInstruction {
-  highNibble: number; // 1111000000000000
-  nnn: number;        // 0000111111111111
-  n: number;          // 0000000000001111
-  x: number;          // 0000111100000000
-  y: number;          // 0000000011110000
-  kk:number;          // 0000000011111111
-
-  [key: string]: number;
-}
-
-class Instruction {
-  private index: number;
-  private decoded: DecodedInstruction;
-
-  constructor(index: number, decoded: DecodedInstruction) {
-    this.index = index;
-    this.decoded = decoded;
-  }
-
-  public get mnemonic() {
-    const lookup = mnemonicTable[this.index];
-
-    // There's no zero padding (and can't be like this)
-    return lookup.replace(/(?:nnn|n|x|y|kk)/g,
-      (placeholder) => this.decoded[placeholder].toString(16).toUpperCase()
-    );
-  }
-}
+const DISPLAY_WIDTH = 64;
+const DISPLAY_HEIGHT = 32;
 
 export class Processor {
-  memory!: Uint8Array;
-  registers!: Uint8Array;
-  display!: Uint8Array;
-  vf!: number;
-  addr!: number; // The I (index?) register
-  pc!: number;
-  stack!: Uint16Array;
-  sp!: number;
+  private memory!: Uint8Array;
+  private registers!: Uint8Array;
+  private display!: Uint8Array;
+  private vf!: number;
+  private addr!: number; // The I (index?) register
+  private pc!: number;
+  private stack!: Uint16Array;
+  private sp!: number;
+  private dt!: number;
+  private st!: number;
 
   constructor() {
     this.reset();
   }
 
+  mapRom(rom: Rom): void {
+    this.memory.set(rom.data, 0x200);
+  }
+
+  // Reset the processor state.
   reset(): void {
     this.memory = new Uint8Array(0xFFFF);
     this.registers = new Uint8Array(16);
-    this.display = new Uint8Array(64 * 32);
+    this.display = new Uint8Array(DISPLAY_HEIGHT * DISPLAY_WIDTH);
     this.vf = 0;
     this.addr = 0;
     this.pc = 0x200;
     this.stack = new Uint16Array(16);
     this.sp = this.stack.length - 1;
+    this.dt = 0;
+    this.st = 0;
+
+    // Load the character set into memory at 0x0050.
+    // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.4
+    this.memory.set([
+      0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+      0x20, 0x60, 0x20, 0x20, 0x70, // 1
+      0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+      0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+      0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+      0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+      0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+      0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+      0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+      0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+      0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+      0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+      0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+      0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+      0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+      0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+    ], 0x0050);
   }
 
-  readRom(path: string): void {
-    const data = fs.readFileSync(path);
-    this.memory.set(data, 0x200);
+  // Fetch the next opcode from memory.
+  fetch(): number {
+    // Chip-8 is big-endian, need to swap the byte order.
+    // Each opcode is 2 bytes.
+    const opcode = (this.memory[this.pc] << 8) | this.memory[this.pc + 1];
+    return opcode;
   }
 
+  // Decode the opcode into an instruction.
+  decode(opcode: number): Instruction {
+    const instruction = OpcodeDecoder.decode(opcode);
+    return instruction;
+  }
+
+  // Execute an instruction.
+  execute(instruction: Instruction): void {
+    const func = this.operationTable[instruction.index]
+    func(instruction);
+  }
+
+  // Execute a processor cycle.
+  step(trace?: boolean): void {
+    const opcode = this.fetch();
+    const instruction = this.decode(opcode);
+
+    this.execute(instruction);
+    this.pc += 2;
+
+    // Horrorshow
+    if (trace) {
+      const output = Disassembler.disassemble(instruction);
+
+      const pc = `${(this.pc - 2).toString(16).toUpperCase().padStart(4, '0')}`;
+      const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
+
+      let registers = '';
+      for (let i = 0; i < this.registers.length - 1; i++) {
+        registers += `${this.registers[i].toString(16).toUpperCase().padStart(2, '0')} `;
+      }
+      registers.trim();
+
+      const vf = `${this.vf.toString(16).toUpperCase().padStart(2, '0')}`;
+      const sp = `${this.sp.toString(16).toUpperCase().padStart(2, '0')}`;
+      const addr = `${this.addr.toString(16).toUpperCase().padStart(4, '0')}`;
+
+      console.log(`${pc} | ${mnemonic} | ${registers} | ${vf} | ${sp} | ${addr}`);
+    }
+  }
+
+  // The instruction set.
+  private operationTable: Operation[] = [
+    this.sys.bind(this),
+    this.cls.bind(this),
+    this.ret.bind(this),
+    this.jp_nnn.bind(this),
+    this.call_nnn.bind(this),
+    this.se_xkk.bind(this),
+    this.sne_xkk.bind(this),
+    this.se_xy.bind(this),
+    this.ld_xkk.bind(this),
+    this.add_xkk.bind(this),
+    this.ld_xy.bind(this),
+    this.or_xy.bind(this),
+    this.and_xy.bind(this),
+    this.xor_xy.bind(this),
+    this.add_xy.bind(this),
+    this.sub_xy.bind(this),
+    this.shr_x.bind(this),
+    this.subn_xy.bind(this),
+    this.shl_x.bind(this),
+    this.sne_xy.bind(this),
+    this.ld_nnn.bind(this),
+    this.jp_v0_nnn.bind(this),
+    this.rnd_xkk.bind(this),
+    this.drw_xyn.bind(this),
+    this.skp_x.bind(this),
+    this.sknp_x.bind(this),
+    this.ld_x_dt.bind(this),
+    this.ld_x_k.bind(this),
+    this.ld_dt_x.bind(this),
+    this.ld_st_x.bind(this),
+    this.add_i_x.bind(this),
+    this.ld_f_x.bind(this),
+    this.ld_b_x.bind(this),
+    this.ld_i_x.bind(this),
+    this.ld_x_i.bind(this)
+  ];
+
+  // Couple helpers.
   private push(value: number): void {
     this.stack[this.sp] = value;
-    this.sp -= 2;
+    this.sp--;
   }
 
   private pop(): number {
     const data = this.stack[this.sp];
-    this.sp += 2;
+    this.sp++;
 
     return data;
   }
 
-  fetch(): number {
-    // Shuffle the opcode around, it's stored as big endian so the byte order
-    // needs to be flipped.
-    return (this.memory[this.pc] << 8) | this.memory[this.pc + 1];
+  // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
+  // https://en.wikipedia.org/wiki/CHIP-8
+  private sys(instruction: Instruction): void {
+    // console.log('Ignoring SYS instruction.');
   }
 
-  decode(opcode: number): Instruction {
-    // Break it down into into the various encodings that are used.
-    const decoded: DecodedInstruction = {
-      highNibble: (opcode & 0xF000) >>> 12,
-      nnn: opcode & 0x0FFF,
-      n: opcode & 0x000F,
-      x: (opcode & 0x0F00) >>> 8, // beware the >>
-      y: (opcode & 0x00F0) >>> 4,
-      kk: opcode & 0x00FF,
-    }
-
-    // Index lets us decouple variable parts into just being lookups.
-    // For example, the disassembly, instruction implementations, etc.
-    let index = 0;
-    switch(decoded.highNibble) {
-      case 0x00:
-        switch (decoded.n) {
-          case 0x00: index = 0; break; // 00E0 - CLS
-          case 0x0E: index = 1; break; // 00EE - RET
-          default: index = 2; break;   // 0nnn - SYS
-        }
-        break;
-
-      case 0x01: index = 3; break; // 1nnn - JP addr
-      case 0x02: index = 4; break; // 2nnn - CALL addr
-      case 0x03: index = 5; break; // 3xkk - SE Vx, byte
-      case 0x04: index = 6; break; // 4xkk - SNE Vx, byte
-      case 0x05: index = 7; break; // 5xy0 - SE Vx, Vy
-      case 0x06: index = 8; break; // 6xkk - LD Vx, byte
-      case 0x07: index = 9; break; // 7xkk - ADD Vx, byte
-
-      case 0x08:
-        switch (decoded.n) {
-          case 0x00: index = 10; break; // 8xy0 - LD Vx, Vy
-          case 0x01: index = 11; break; // 8xy1 - OR Vx, Vy
-          case 0x02: index = 12; break; // 8xy2 - AND Vx, Vy
-          case 0x03: index = 13; break; // 8xy3 - XOR Vx, Vy
-          case 0x04: index = 14; break; // 8xy4 - ADD Vx, Vy
-          case 0x05: index = 15; break; // 8xy5 - SUB Vx, Vy
-          case 0x06: index = 16; break; // 8xy6 - SHR Vx
-          case 0x07: index = 17; break; // 8xy7 - SUBN Vx, Vy
-          case 0x0E: index = 18; break; // 8xyE - SHL Vx
-        }
-        break;
-
-      case 0x09: index = 19; break; // 9xy0 - SNE Vx, Vy
-      case 0x0A: index = 20; break; // Annn - LD I, addr
-      case 0x0B: index = 21; break; // Bnnn - JP V0, addr
-      case 0x0C: index = 22; break; // Cxkk - RND Vx, byte
-      case 0x0D: index = 23; break; // Dxyn - DRW Vx, Vy, nibble
-
-      case 0x0E:
-        switch (decoded.kk) {
-          case 0x9E: index = 24; break; // Ex9E - SKP Vx
-          case 0xA1: index = 25; break; // ExA1 - SKNP Vx
-        }
-        break;
-
-      case 0x0F:
-        switch (decoded.kk) {
-          case 0x07: index = 26; break; // Fx07 - LD Vx, DT
-          case 0x0A: index = 27; break; // Fx0A - LD Vx, K
-          case 0x15: index = 28; break; // Fx15 - LD DT, Vx
-          case 0x18: index = 29; break; // Fx18 - LD ST, Vx
-          case 0x1E: index = 30; break; // Fx1E - ADD I, Vx
-          case 0x29: index = 31; break; // Fx29 - LD F, Vx
-          case 0x33: index = 32; break; // Fx33 - LD B, Vx
-          case 0x55: index = 33; break; // Fx55 - LD [I], Vx
-          case 0x65: index = 34; break; // Fx65 - LD Vx, [I]
-        }
-        break;
-    }
-
-    return new Instruction(index, decoded);
+  private cls(instruction: Instruction): void {
+    this.display.fill(0);
   }
 
-  disassemble(): string[] {
-    const pc = this.pc;
-    const output: string[] = [];
+  private ret(instruction: Instruction): void {
+    this.pc = this.pop();
+  }
 
-    do {
-      const opcode = this.fetch();
+  private jp_nnn(instruction: Instruction): void {
+    this.pc = instruction.nnn;
+  }
+
+  private call_nnn(instruction: Instruction): void {
+    this.push(this.pc);
+    this.pc = instruction.nnn;
+  }
+
+  private se_xkk(instruction: Instruction): void {
+    if (this.registers[instruction.x] === instruction.kk) {
       this.pc += 2;
+    }
+  }
 
-      if (opcode === 0) {
-        continue;
+  private sne_xkk(instruction: Instruction): void {
+    if (this.registers[instruction.x] !== instruction.kk) {
+      this.pc += 2;
+    }
+  }
+
+  private se_xy(instruction: Instruction): void {
+    if (this.registers[instruction.x] === this.registers[instruction.y]) {
+      this.pc += 2;
+    }
+  }
+
+  private ld_xkk(instruction: Instruction): void {
+    this.registers[instruction.x] = instruction.kk;
+  }
+
+  private add_xkk(instruction: Instruction): void {
+    this.registers[instruction.x] += instruction.kk;
+  }
+
+  private ld_xy(instruction: Instruction): void {
+    this.registers[instruction.x] = this.registers[instruction.y];
+  }
+
+  private or_xy(instruction: Instruction): void {
+    this.registers[instruction.x] |= this.registers[instruction.y];
+  }
+
+  private and_xy(instruction: Instruction): void {
+    this.registers[instruction.x] &= this.registers[instruction.y];
+  }
+
+  private xor_xy(instruction: Instruction): void {
+    this.registers[instruction.x] ^= this.registers[instruction.y];
+  }
+
+  private add_xy(instruction: Instruction): void {
+    const result = this.registers[instruction.x] + this.registers[instruction.y];
+
+    this.vf = result > 0xFF ? 1 : 0;
+    this.registers[instruction.x] = result & 0xFF;
+  }
+
+  // I think the Cowgod reference is wrong here and it should be a ">=" for
+  // the flag check. If they're equal, there is still no borrow is needed.
+  private sub_xy(instruction: Instruction): void {
+    this.vf = this.registers[instruction.x] >= this.registers[instruction.y] ? 1 : 0;
+    this.registers[instruction.x] = this.registers[instruction.x] - this.registers[instruction.y];
+  }
+
+  private shr_x(instruction: Instruction): void {
+    this.vf = this.registers[instruction.x] & 0x01;
+    this.registers[instruction.x] >>= 1;
+  }
+
+  private subn_xy(instruction: Instruction): void {
+    this.vf = this.registers[instruction.y] >= this.registers[instruction.x] ? 1 : 0;
+    this.registers[instruction.x] = this.registers[instruction.y] - this.registers[instruction.x];
+  }
+
+  private shl_x(instruction: Instruction): void {
+    this.vf = this.registers[instruction.x] & 0x8000;
+    this.registers[instruction.x] <<= 1;
+  }
+
+  private sne_xy(instruction: Instruction): void {
+    if (this.registers[instruction.x] !== this.registers[instruction.y]) {
+      this.pc += 2;
+    }
+  }
+
+  private ld_nnn(instruction: Instruction): void {
+    this.addr = instruction.nnn;
+  }
+
+  private jp_v0_nnn(instruction: Instruction): void {
+    this.pc = this.registers[0] + instruction.nnn;
+  }
+
+  private rnd_xkk(instruction: Instruction): void {
+    this.registers[instruction.x] = Math.round(Math.random() * 255) & instruction.kk;
+  }
+
+  private drw_xyn(instruction: Instruction): void {
+    // Each row of a sprite is a byte.
+    const xOffset = instruction.x;
+    const yOffset = instruction.y;
+
+    for (let y = 0; y < instruction.n; y++) {
+      // I register points to sprite data we're drawing - sprite can be n bytes.
+      const spriteByte = this.memory[this.addr + y];
+
+      // Walk the bits in the sprite
+      for (let x = 0; x < 8; x++) {
+        // Each bit in the byte represents a pixel in the row, check if the
+        // appropriate bit is set for the current pixel.
+        const bit = spriteByte & (0x8000 >> x);
+
+        const wrappedX = (x + xOffset) % DISPLAY_WIDTH;
+        const wrappedY = (y + yOffset) % DISPLAY_HEIGHT;
+        const displayPointer = (wrappedY * DISPLAY_WIDTH) + wrappedX;
+
+        const currentPixel = this.display[displayPointer];
+        const result = currentPixel ^ bit;
+
+        // If result is 0, we blew away a pixel and need to set the VF flag.
+        this.vf = (result === 0) ? 1 : 0;
+        this.display[displayPointer] = result;
       }
+    }
+  }
 
-      const instr = this.decode(opcode);
-      output.push(instr.mnemonic);
-    } while (this.pc <= 0x0FFF);
+  private skp_x(instruction: Instruction): void {
+    // Just stub this out - we have no input implementation yet.
+    // This should probably be sufficient to at least boot ROMs.
+    console.log('Stubbed instruction: SKP');
+  }
 
-    this.pc = pc;
-    return output;
+  private sknp_x(instruction: Instruction): void {
+    // Ditto ^^^
+    console.log('Stubbed instruction: SKNP');
+  }
+
+  private ld_x_dt(instruction: Instruction): void {
+    // TODO:
+    // There's no display timer emulated, this will always read 0 currently...
+    this.registers[instruction.x] = this.dt;
+  }
+
+  private ld_x_k(instruction: Instruction): void {
+    // There's no key input yet...
+    // this.isHalted = true;
+    //this.registers[instruction.x] = this.key;
+  }
+
+  private ld_dt_x(instruction: Instruction): void {
+    // There's no sound timer yet...
+    this.dt = this.registers[instruction.x];
+  }
+
+  private ld_st_x(instruction: Instruction): void {
+    // There's no sound timer yet...
+    this.st = this.registers[instruction.x];
+  }
+
+  private add_i_x(instruction: Instruction): void {
+    this.addr = this.addr + this.registers[instruction.x];
+  }
+
+  private ld_f_x(instruction: Instruction): void {
+    // Each character is 5 bytes long, account for this offset.
+    this.addr = this.registers[instruction.x] * 5;
+  }
+
+
+  private ld_b_x(instruction: Instruction): void {
+    console.log('Stubbed instruction: LD B, Vx');
+  }
+
+  private ld_i_x(instruction: Instruction): void {
+    // This is a write from registers to memory.
+    for (let i = 0; i <= instruction.x; i++) {
+      this.memory[this.addr + i] = this.registers[i];
+    }
+  }
+
+  private ld_x_i(instruction: Instruction): void {
+    // This is a read from memory to registers.
+    for (let i = 0; i <= instruction.x; i++) {
+      this.registers[i] = this.memory[this.addr + i];
+    }
   }
 }

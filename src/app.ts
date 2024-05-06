@@ -1,10 +1,20 @@
-import { Processor } from "./chip-8/processor";
+import { Rom } from './chip-8/rom';
+import { Disassembler } from './chip-8/disassembler';
+import { OpcodeDecoder } from './chip-8/opcode';
+import { Processor } from './chip-8/processor';
 
-const processor = new Processor();
-processor.readRom('./roms/IBM Logo.ch8')
+const rom = new Rom();
+rom.fromFile('./roms/IBM Logo.ch8');
 
-const data = processor.disassemble();
-for(const x of data) {
-  console.log(x);
+const cpu = new Processor();
+cpu.mapRom(rom);
+
+for (let i = 0; i < 1000; i++) {
+  cpu.step(true);
 }
-const test = 1;
+
+//for (const opcode of rom.generateOpcodes()) {
+//  const instruction = OpcodeDecoder.decode(opcode);
+//  const output = Disassembler.disassemble(instruction);
+//  console.log(output);
+//}
