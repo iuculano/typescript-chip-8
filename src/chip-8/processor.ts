@@ -279,8 +279,8 @@ export class Processor {
 
   private drw_xyn(instruction: Instruction): void {
     // Each row of a sprite is a byte.
-    const xOffset = instruction.x;
-    const yOffset = instruction.y;
+    const xOffset = this.registers[instruction.x];
+    const yOffset = this.registers[instruction.y];
 
     for (let y = 0; y < instruction.n; y++) {
       // I register points to sprite data we're drawing - sprite can be n bytes.
@@ -290,7 +290,7 @@ export class Processor {
       for (let x = 0; x < 8; x++) {
         // Each bit in the byte represents a pixel in the row, check if the
         // appropriate bit is set for the current pixel.
-        const bit = spriteByte & (0x8000 >> x);
+        const bit = (spriteByte & (0x80 >>> x)) ? 1 : 0;
 
         const wrappedX = (x + xOffset) % DISPLAY_WIDTH;
         const wrappedY = (y + yOffset) % DISPLAY_HEIGHT;
