@@ -1,5 +1,6 @@
 import { Instruction } from './instruction';
 import { OpcodeDecoder } from './opcode';
+import { Disassembler } from './disassembler';
 
 type Operation = (instruction: Instruction) => void;
 
@@ -78,10 +79,17 @@ export class Processor {
   }
 
   // Execute a processor cycle.
-  step(): void {
+  step(trace?: boolean): void {
     const opcode = this.fetch();
     const instruction = this.decode(opcode);
+
+    if (trace) {
+      const output = Disassembler.disassemble(instruction);
+      console.log(output);
+    }
+
     this.execute(instruction);
+    this.pc += 2;
   }
 
   // The instruction set.
