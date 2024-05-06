@@ -152,7 +152,7 @@ export class Processor {
   // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
   // https://en.wikipedia.org/wiki/CHIP-8
   private sys(instruction: Instruction): void {
-    console.log('Ignoring SYS instruction.');
+    // console.log('Ignoring SYS instruction.');
   }
 
   private cls(instruction: Instruction): void {
