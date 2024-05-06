@@ -179,7 +179,8 @@ export class Processor {
   }
 
   private jp_nnn(instruction: Instruction): void {
-    this.pc = instruction.nnn;
+    // Fudge PC by 2 to account for the increment that will happen after
+    this.pc = instruction.nnn - 2;
   }
 
   private call_nnn(instruction: Instruction): void {
