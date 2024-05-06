@@ -99,10 +99,10 @@ export class Processor {
       const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
 
       let registers = '';
-      for (let i = 0; i < this.registers.length - 1; i++) {
+      for (let i = 0; i < this.registers.length; i++) {
         registers += `${this.registers[i].toString(16).toUpperCase().padStart(2, '0')} `;
       }
-      registers.trim();
+      registers = registers.trim();
 
       const vf = `${this.vf.toString(16).toUpperCase().padStart(2, '0')}`;
       const sp = `${this.sp.toString(16).toUpperCase().padStart(2, '0')}`;
