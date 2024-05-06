@@ -1,4 +1,4 @@
-import { Instruction, InstructionVariables } from './instruction';
+import { Instruction } from './instruction';
 
 // Lookup table for instruction mnemonics. An instruction, when decoded, will
 // be assigned an index that corresponds to the mnemonic in this table.
@@ -48,17 +48,17 @@ export class Disassembler {
       (placeholder) => {
         switch (placeholder) {
           // A 12-bit address, will always be three hex digits.
-          case 'nnn': return '$' + instruction.variables.nnn.toString(16).toUpperCase().padStart(3, '0');
+          case 'nnn': return '$' + instruction.nnn.toString(16).toUpperCase().padStart(3, '0');
 
           // A nibble, will never be more than a single hex digit.
-          case 'n': return '$' + instruction.variables.n.toString(16).toUpperCase();
+          case 'n': return '$' + instruction.n.toString(16).toUpperCase();
 
           // Treat register numbers as decimal.
-          case 'x': return instruction.variables.x.toString();
-          case 'y': return instruction.variables.y.toString();
+          case 'x': return instruction.x.toString();
+          case 'y': return instruction.y.toString();
 
           // A byte, will always be two hex digits.
-          case 'kk': return '$' + instruction.variables.kk.toString(16).toUpperCase().padStart(2, '0');
+          case 'kk': return '$' + instruction.kk.toString(16).toUpperCase().padStart(2, '0');
 
           default:
             return 'this should never be hit but i want typescript to not whine';
