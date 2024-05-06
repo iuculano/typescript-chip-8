@@ -88,13 +88,28 @@ export class Processor {
     const opcode = this.fetch();
     const instruction = this.decode(opcode);
 
-    if (trace) {
-      const output = Disassembler.disassemble(instruction);
-      console.log(output);
-    }
-
     this.execute(instruction);
     this.pc += 2;
+
+    // Horrorshow
+    if (trace) {
+      const output = Disassembler.disassemble(instruction);
+
+      const pc = `${(this.pc - 2).toString(16).toUpperCase().padStart(4, '0')}`;
+      const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
+
+      let registers = '';
+      for (let i = 0; i < this.registers.length - 1; i++) {
+        registers += `${this.registers[i].toString(16).toUpperCase().padStart(2, '0')} `;
+      }
+      registers.trim();
+
+      const vf = `${this.vf.toString(16).toUpperCase().padStart(2, '0')}`;
+      const sp = `${this.sp.toString(16).toUpperCase().padStart(2, '0')}`;
+      const addr = `${this.addr.toString(16).toUpperCase().padStart(4, '0')}`;
+
+      console.log(`${pc} | ${mnemonic} | ${registers} | ${vf} | ${sp} | ${addr}`);
+    }
   }
 
   // The instruction set.
