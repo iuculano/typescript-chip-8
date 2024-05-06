@@ -23,7 +23,7 @@ const mnemonicTable = [
   'SUBN Vx, Vy',
   'SHL Vx',
   'SNE Vx, Vy',
-  'LD I, kk',
+  'LD I, nnn',
   'JP V0, kk',
   'RND Vx, kk',
   'DRW Vx, Vy, n',
