@@ -1,5 +1,6 @@
 import { Instruction } from './instruction';
 import { OpcodeDecoder } from './opcode';
+import { Rom } from './rom';
 import { Disassembler } from './disassembler';
 
 type Operation = (instruction: Instruction) => void;
@@ -21,6 +22,10 @@ export class Processor {
 
   constructor() {
     this.reset();
+  }
+
+  mapRom(rom: Rom): void {
+    this.memory.set(rom.data, 0x200);
   }
 
   // Reset the processor state.
