@@ -9,7 +9,7 @@ rom.fromFile('./roms/IBM Logo.ch8');
 const cpu = new Processor();
 cpu.mapRom(rom);
 
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 200; i++) {
   cpu.step(true);
 }
 
