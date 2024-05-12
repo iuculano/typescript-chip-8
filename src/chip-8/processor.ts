@@ -37,7 +37,7 @@ export class Processor {
     this.addr = 0;
     this.pc = 0x200;
     this.stack = new Uint16Array(16);
-    this.sp = this.stack.length - 1;
+    this.sp = this.stack.length;
     this.dt = 0;
     this.st = 0;
 
@@ -93,8 +93,6 @@ export class Processor {
 
     // Horrorshow
     if (trace) {
-      const output = Disassembler.disassemble(instruction);
-
       const pc = `${(this.pc - 2).toString(16).toUpperCase().padStart(4, '0')}`;
       const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
 
@@ -153,8 +151,8 @@ export class Processor {
 
   // Couple helpers.
   private push(value: number): void {
-    this.stack[this.sp] = value;
     this.sp--;
+    this.stack[this.sp] = value;
   }
 
   private pop(): number {
@@ -179,13 +177,16 @@ export class Processor {
   }
 
   private jp_nnn(instruction: Instruction): void {
-    // Fudge PC by 2 to account for the increment that will happen after
+    // We increment PC by 2 after each instruction, so we need to subtract 2
+    // here or we'll skip an instruction.
     this.pc = instruction.nnn - 2;
   }
 
   private call_nnn(instruction: Instruction): void {
+    // We increment PC by 2 after each instruction, so we need to subtract 2
+    // here or we'll skip an instruction.
     this.push(this.pc);
-    this.pc = instruction.nnn;
+    this.pc = instruction.nnn - 2;
   }
 
   private se_xkk(instruction: Instruction): void {
@@ -350,7 +351,14 @@ export class Processor {
 
 
   private ld_b_x(instruction: Instruction): void {
-    console.log('Stubbed instruction: LD B, Vx');
+    const value = this.registers[instruction.x];   // Take '123' for example
+    const hundreds = Math.floor(value / 100) % 10; // Math.floor(value / 100) = 1   % 10 = 1
+    const tens = Math.floor(value / 10) % 10;      // Math.floor(value / 10)  = 12  % 10 = 2
+    const ones = value % 10;                       //                           123 % 10 = 3
+
+    this.memory[this.addr] = hundreds;
+    this.memory[this.addr + 1] = tens;
+    this.memory[this.addr + 2] = ones;
   }
 
   private ld_i_x(instruction: Instruction): void {
