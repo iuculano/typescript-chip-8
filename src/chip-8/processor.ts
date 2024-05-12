@@ -93,8 +93,6 @@ export class Processor {
 
     // Horrorshow
     if (trace) {
-      const output = Disassembler.disassemble(instruction);
-
       const pc = `${(this.pc - 2).toString(16).toUpperCase().padStart(4, '0')}`;
       const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
 
