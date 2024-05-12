@@ -353,7 +353,14 @@ export class Processor {
 
 
   private ld_b_x(instruction: Instruction): void {
-    console.log('Stubbed instruction: LD B, Vx');
+    const value = this.registers[instruction.x];   // Take '123' for example
+    const hundreds = Math.floor(value / 100) % 10; // Math.floor(value / 100) = 1   % 10 = 1
+    const tens = Math.floor(value / 10) % 10;      // Math.floor(value / 10)  = 12  % 10 = 2
+    const ones = value % 10;                       //                           123 % 10 = 3
+
+    this.memory[this.addr] = hundreds;
+    this.memory[this.addr + 1] = tens;
+    this.memory[this.addr + 2] = ones;
   }
 
   private ld_i_x(instruction: Instruction): void {
