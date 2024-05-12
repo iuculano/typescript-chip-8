@@ -37,7 +37,7 @@ export class Processor {
     this.addr = 0;
     this.pc = 0x200;
     this.stack = new Uint16Array(16);
-    this.sp = this.stack.length - 1;
+    this.sp = this.stack.length;
     this.dt = 0;
     this.st = 0;
 
@@ -153,8 +153,8 @@ export class Processor {
 
   // Couple helpers.
   private push(value: number): void {
-    this.stack[this.sp] = value;
     this.sp--;
+    this.stack[this.sp] = value;
   }
 
   private pop(): number {
@@ -179,13 +179,16 @@ export class Processor {
   }
 
   private jp_nnn(instruction: Instruction): void {
-    // Fudge PC by 2 to account for the increment that will happen after
+    // We increment PC by 2 after each instruction, so we need to subtract 2
+    // here or we'll skip an instruction.
     this.pc = instruction.nnn - 2;
   }
 
   private call_nnn(instruction: Instruction): void {
+    // We increment PC by 2 after each instruction, so we need to subtract 2
+    // here or we'll skip an instruction.
     this.push(this.pc);
-    this.pc = instruction.nnn;
+    this.pc = instruction.nnn - 2;
   }
 
   private se_xkk(instruction: Instruction): void {
