@@ -2,6 +2,7 @@ import { Instruction } from './instruction';
 import { OpcodeDecoder } from './opcode';
 import { Rom } from './rom';
 import { Disassembler } from './disassembler';
+import { formatHex } from './util';
 
 type Operation = (instruction: Instruction) => void;
 
@@ -93,18 +94,18 @@ export class Processor {
 
     // Horrorshow
     if (trace) {
-      const pc = `${(this.pc - 2).toString(16).toUpperCase().padStart(4, '0')}`;
+      const pc = `${formatHex(this.pc, 4)}`;
       const mnemonic = `${Disassembler.disassemble(instruction).padStart(16, ' ')}`;
 
       let registers = '';
       for (let i = 0; i < this.registers.length; i++) {
-        registers += `${this.registers[i].toString(16).toUpperCase().padStart(2, '0')} `;
+        registers += `${formatHex(this.registers[i], 2)} `;
       }
       registers = registers.trim();
 
-      const vf = `${this.vf.toString(16).toUpperCase().padStart(2, '0')}`;
-      const sp = `${this.sp.toString(16).toUpperCase().padStart(2, '0')}`;
-      const addr = `${this.addr.toString(16).toUpperCase().padStart(4, '0')}`;
+      const vf = `${formatHex(this.vf, 2)}`;
+      const sp = `${formatHex(this.sp, 2)}`;
+      const addr = `${formatHex(this.addr, 4)}`;
 
       console.log(`${pc} | ${mnemonic} | ${registers} | ${vf} | ${sp} | ${addr}`);
     }
