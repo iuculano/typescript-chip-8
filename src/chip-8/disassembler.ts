@@ -1,4 +1,5 @@
 import { Instruction } from './instruction';
+import { formatHex } from './util';
 
 // Lookup table for instruction mnemonics. An instruction, when decoded, will
 // be assigned an index that corresponds to the mnemonic in this table.
@@ -40,25 +41,42 @@ const mnemonicTable = [
   'LD Vx, [I]',
 ];
 
+enum Placeholder {
+  Address = 'nnn', // A 12-bit address, will always be three hex digits.
+  Nibble = 'n',    // A nibble, will never be more than a single hex digit.
+  RegisterX = 'x', // Represents a register, will always be a decimal digit.
+  RegisterY = 'y', // Represents a register, will always be a decimal digit.
+  Byte = 'kk',     // A byte, will always be two hex digits.
+}
+
 export class Disassembler {
   public static disassemble(instruction: Instruction): string {
     const lookup = mnemonicTable[instruction.index];
+    if (!lookup) {
+      // It should be impossible to ever return an invalid index - this would
+      // mean there's a bug in the opcode decoding logic.
+      throw new Error(`Invalid instruction index: ${instruction.index}`);
+    }
 
+    // Replace placeholders in the mnemonic with the actual values from the
+    // instruction.
     return lookup.replace(/(?:nnn|n|x|y|kk)/g,
       (placeholder) => {
         switch (placeholder) {
-          // A 12-bit address, will always be three hex digits.
-          case 'nnn': return '$' + instruction.nnn.toString(16).toUpperCase().padStart(3, '0');
+          case Placeholder.Address:
+            return formatHex(instruction.nnn, 3);
 
-          // A nibble, will never be more than a single hex digit.
-          case 'n': return '$' + instruction.n.toString(16).toUpperCase();
+          case Placeholder.Nibble:
+            return formatHex(instruction.n, 1);
 
-          // Treat register numbers as decimal.
-          case 'x': return instruction.x.toString();
-          case 'y': return instruction.y.toString();
+          case Placeholder.RegisterX:
+            return instruction.x.toString();
 
-          // A byte, will always be two hex digits.
-          case 'kk': return '$' + instruction.kk.toString(16).toUpperCase().padStart(2, '0');
+          case Placeholder.RegisterY:
+            return instruction.y.toString();
+
+          case Placeholder.Byte:
+            return formatHex(instruction.kk, 2);
 
           default:
             return 'this should never be hit but i want typescript to not whine';
